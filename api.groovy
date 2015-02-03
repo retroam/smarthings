@@ -29,7 +29,8 @@ preferences {
 	section("Allow Shield to Control These Things...") {
 		input "switches", "capability.switch", title: "Which Switches?", multiple: true, required: false
         input "locks", "capability.lock", title: "Which Locks?", multiple: true, required: false
-        input "alarms", "capability.alarm", title: "Which Alarms?", multiple: true, required: false  
+        input "alarms", "capability.alarm", title: "Which Alarms?", multiple: true, required: false
+        input "contacts", "capability.contactSensor", title: "Which Contacts?", multiple: true, required: false
 	}
 }
 
@@ -70,6 +71,21 @@ mappings {
 			PUT: "updateAlarm"
 		]
 	}
+    
+     path("/contacts") {
+		action: [
+			GET: "listContacts",
+			PUT: "updateContacts"
+		]
+	}
+	path("/contacts/:id") {
+		action: [
+			GET: "showContact",
+			PUT: "updateContact"
+		]
+	}
+	
+
       
 }
 
@@ -117,7 +133,18 @@ void updateAlarm() {
 	update(alarms)
 }
 
-
+def listContacts() {
+	contacts.collect { device(it, "contactSensor") }
+}
+void updateContacts() {
+	updateAll(contacts)
+}
+def showContact() {
+	show(contacts, "contactSensor")
+}
+void updateContact() {
+	update(contacts)
+}
 
 private void updateAll(devices) {
 	def command = request.JSON?.command
