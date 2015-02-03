@@ -1,6 +1,5 @@
 /**
  *  Sensable
- *
  *  Copyright 2015 Sensable
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -24,136 +23,164 @@ definition(
     iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
     oauth: true)
 
-
+/* --- setup section --- */
 preferences {
-	section("Allow Shield to Control These Things...") {
+	section("Allow Shield to Control & Access These Things...") {
 		input "switches", "capability.switch", title: "Which Switches?", multiple: true, required: false
-        input "locks", "capability.lock", title: "Which Locks?", multiple: true, required: false
-        input "alarms", "capability.alarm", title: "Which Alarms?", multiple: true, required: false
-        input "contacts", "capability.contactSensor", title: "Which Contacts?", multiple: true, required: false
 	}
 }
 
+/* --- API mapping--- */
 mappings {
-	path("/switches") {
+	path("/:type") {
 		action: [
-			GET: "listSwitches",
-			PUT: "updateSwitches"
+			GET: "api_list",
+            PUT: "api_update"
 		]
 	}
-	path("/switches/:id") {
+	path("/:type/:id") {
 		action: [
-			GET: "showSwitch",
-			PUT: "updateSwitch"
+			GET: "api_get",
+			PUT: "api_put"
 		]
+	}     
+}
+/*
+ * Called when app is installed
+ */
+def installed() {
+	event_subscribe()
+    }
+
+/*
+ * Called when user changes preferences
+ */
+def updated() {
+    log.debug "updated"
+    unsubscribe()
+
 	}
-    path("/locks") {
-		action: [
-			GET: "listLocks",
-			PUT: "updateLocks"
-		]
-	}
-	path("/locks/:id") {
-		action: [
-			GET: "showLock",
-			PUT: "updateLock"
-		]
-	}
-    path("/alarms") {
-		action: [
-			GET: "listAlarms",
-			PUT: "updateAlarms"
-		]
-	}
-	path("/alarms/:id") {
-		action: [
-			GET: "showAlarm",
-			PUT: "updateAlarm"
-		]
-	}
+
+/* --- event section --- */
+def event_subscribe()
+{  
+    log.debug "subscribed"
+    subscribe(switches, "switch", "on_event")
+}
+
+def on_event(evt)
+{
+    log.debug "on_event"
+    def dt = device_and_type_for_event(evt)
+    if (!dt) {
+        log.debug "on_event deviceId=${evt.deviceId} not found?"
+        return;
+    }
     
-     path("/contacts") {
-		action: [
-			GET: "listContacts",
-			PUT: "updateContacts"
-		]
-	}
-	path("/contacts/:id") {
-		action: [
-			GET: "showContact",
-			PUT: "updateContact"
-		]
-	}
-	
+    def jd = device_to_json(dt.device, dt.type)
+    log.debug "on_event deviceId=${jd}"
 
-      
-}
+    send(dt.device, dt.type, jd)
 
-def installed() {}
-
-def updated() {}
-
-def listSwitches() {
-	switches.collect { device(it,"switch") }
-}
-void updateSwitches() {
-	updateAll(switches)
-}
-def showSwitch() {
-	show(switches, "switch")
-}
-void updateSwitch() {
-	update(switches)
-}
-
-def listLocks() {
-	locks.collect { device(it, "lock") }
-}
-void updateLocks() {
-	updateAll(locks)
-}
-def showLock() {
-	show(locks, "lock")
-}
-void updateLock() {
-	update(locks)
 }
 
 
-def listAlarms() {
-	alarms.collect { device(it, "alarm") }
-}
-void updateAlarms() {
-	updateAll(alarms)
-}
-def showAlarm() {
-	show(alarms, "alarm")
-}
-void updateAlarm() {
-	update(alarms)
+/* --- API parsing --- */
+def api_list(){
+log.debug "api_list ${params.type}"
+    devices_for_type(params.type).collect{
+       device(it, params.type)
+   }
 }
 
-def listContacts() {
-	contacts.collect { device(it, "contactSensor") }
-}
-void updateContacts() {
-	updateAll(contacts)
-}
-def showContact() {
-	show(contacts, "contactSensor")
-}
-void updateContact() {
-	update(contacts)
+
+def api_update(){
+  log.debug "put request all devices"
+  def devices = devices_for_type(params.type)
+  if (!devices) {
+        httpError(404, "Devices not found")
+    } else {
+        devices_command(devices)
+    }
 }
 
-private void updateAll(devices) {
-	def command = request.JSON?.command
-	if (command) {
-		devices."$command"()
-	}
+def api_put(){
+    log.debug "put request"
+    def devices = devices_for_type(params.type)
+    def device = devices.find { it.id == params.id }
+    if (!device) {
+        httpError(404, "Device not found")
+    } else {
+        device_command(device)
+    }
 }
 
-private void update(devices) {
+def api_get(){
+    log.debug "get request"
+    def devices = devices_for_type(params.type)
+    def device = devices.find { it.id == params.id }
+    if (!device) {
+        httpError(404, "Device not found")
+    } else {
+        def s = device.currentState(params.type)
+		[id: device.id, label: device.displayName, name: device.displayName, state: s]
+    }
+}
+
+void api_update(){
+    log.debug "api_update"
+    do_update(devices_for_type(params.type), params.type)
+}
+
+def deviceHandler(evt) {
+}
+
+/*
+ *  Devices and Types Dictionary
+ */
+def dtd(){
+    log.debug "call dtd"
+    [ 
+        switch: switches
+    ]
+}
+
+def devices_for_type(type) {
+    log.debug "devices_for_type${ dtd()[type]}"
+    dtd()[type]
+}
+
+def device_and_type_for_event(evt)
+{  
+    log.debug "evt ${evt}"
+    def dtd = dtd()
+    
+    for (dt in dtd()) {
+        if (dt.key != evt.name) {
+        	continue
+        }
+        
+        def devices = dt.value
+        for (device in devices) {
+            if (device.id == evt.deviceId) {
+                return [ device: device, type: dt.key ]
+            }
+        }
+    }
+}
+
+/*
+ *  Device Commands
+ */
+ private void devices_command(devices) {
+ 		def command = request.JSON?.command
+		if (command) {
+			devices."$command"()
+		}
+    
+}
+
+private void device_command(devices) {
 	log.debug "update, request: ${request.JSON}, params: ${params}, devices: $devices.id"
 	def command = request.JSON?.command
 	if (command) {
@@ -166,15 +193,9 @@ private void update(devices) {
 	}
 }
 
-private show(devices, name) {
-	def device = devices.find { it.id == params.id }
-	if (!device) {
-		httpError(404, "Device not found")
-	}
-	else {
-		def s = device.currentState(name)
-		[id: device.id, label: device.displayName, name: device.displayName, state: s]
-	}
+private device_to_json(device, type) {
+	log.debug "device_to_json ${type}"
+	device(it, type)
 }
 
 private device(it, name) {
@@ -183,3 +204,59 @@ private device(it, name) {
 		[id: it.id, label: it.displayName, name: it.displayName, state: s]
     }
 }
+
+/*
+ *  Communication
+ */
+
+def settings()
+{
+    [ 
+		api_username: "",
+        api_key: ""
+    ]
+}
+
+def send(device, device_type, deviced) {
+	def settings = settings()
+    
+    if (!settings.api_username || !settings.api_key) {
+        return
+    }
+
+    log.debug "send() called";
+
+    def now = Calendar.instance
+    def date = now.time
+    def millis = date.time
+    def sequence = millis
+    def isodatetime = deviced?.value?.timestamp
+    
+    def digest = "${settings.api_key}/${settings.api_username}/${isodatetime}/${sequence}".toString();
+    def hash = digest.encodeAsMD5();
+    
+    def topic = "st/${device_type}/${deviced.id}".toString()
+    
+    def uri = "http://127.0.0.1:5000/results"
+    def headers = [:]
+    def body = [
+        "topic": topic,
+        "payloadd": deviced?.value,
+        "timestamp": isodatetime,
+        "sequence": sequence,
+        "signed": hash,
+        "username": settings.api_username
+    ]
+
+    def params = [
+        uri: uri,
+        headers: headers,
+        body: body
+    ]
+
+    log.debug "send : params=${params}"
+    httpPutJson(params) { log.debug "send: response=${response}" }
+}
+
+
+
