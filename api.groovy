@@ -27,6 +27,16 @@ definition(
 preferences {
 	section("Allow Shield to Control & Access These Things...") {
 		input "switches", "capability.switch", title: "Which Switches?", multiple: true, required: false
+        input "locks", "capability.lock", title: "Which Locks?", multiple: true, required: false
+        input "alarms", "capability.alarm", title: "Which Alarms?", multiple: true, required: false
+        input "contacts", "capability.contactSensor", title: "Which Contacts?", multiple: true, required: false
+       // input "carbon","capability.carbonMonoxide", title: "Which CO detectors?", multiple: true, required: false
+        //input "doors", "capability.doorControl", title: "Which Doors?", multiple: true, required: false
+        input "motion", "capability.motionSensor", title: "Which Motion Sensors?", multiple: true, required: false
+        input "presence", "capability.presenceSensor", title: "Which Presence Sensors?", multiple: true, required: false
+        //input "smoke", "capability.smokeDetector", title: "Which Smoke Detectors?", multiple: true, required: false
+        input "temperature", "capability.temperatureMeasurement", title: "Which Temperature Sensors?", multiple: true, required:false
+
 	}
 }
 
@@ -65,7 +75,17 @@ def updated() {
 def event_subscribe()
 {  
     log.debug "subscribed"
-    subscribe(switches, "switch", "on_event")
+    subscribe(switches, "switch", on_event)
+    subscribe(alarms, "alarm", on_event)
+    subscribe(locks, "lock", on_event)
+    subscribe(contacts, "contactSensor", on_event)
+    //subscribe(carbon, "carbonMonoxide", "on_event")
+    //subscribe(doors, "doorControl", "on_event")
+    subscribe(motion, "motionSensor", on_event)
+    //subscribe(smoke, "smokeDetector", "on_event")
+    subscribe(temperature, "temperature", on_event)
+    subscribe(presence, "presenceSensor", on_event)
+
 }
 
 def on_event(evt)
@@ -141,7 +161,17 @@ def deviceHandler(evt) {
 def dtd(){
     log.debug "call dtd"
     [ 
-        switch: switches
+        switch: switches,
+        motion: motion, 
+        contact: contacts,
+        presence: presence,
+        lock: locks,
+        //carbon: carbon,
+        //door: doors,
+        //smoke: smoke,
+        temperature: temperature,
+        alarm: alarms
+
     ]
 }
 
