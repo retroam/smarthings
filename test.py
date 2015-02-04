@@ -41,4 +41,43 @@ print oauth_session.put(endpoint + '/switch' + '/' + device_id,
 print device_id
 print oauth_session.get(endpoint + '/switch' + '/' +  device_id,
                        headers=devices_header
+                        ).json()
+
+# Contacts
+print oauth_session.get(endpoint + '/contact',
+                        headers=devices_header
+                        ).json()
+# Presence
+print oauth_session.get(endpoint + '/presence',
+                       headers=devices_header
                       ).json()
+
+# Motion
+print oauth_session.get(endpoint + '/motion',
+                        headers=devices_header
+                        ).json()
+
+# Temperature
+print oauth_session.get(endpoint + '/temperature',
+                        headers=devices_header
+                        ).json()
+
+# Alarm
+# Supported commands: [off, strobe, siren, both]
+
+r = oauth_session.get(endpoint + '/alarm',
+                        headers=devices_header
+                        ).json()
+
+device_id = r[0]['id']
+oauth_session.put(endpoint + '/alarm' + '/' + device_id,
+                      headers=devices_header,
+                      data=json.dumps({'command': 'off'})
+                      )
+print oauth_session.get(endpoint + '/alarm',
+                        headers=devices_header
+                        ).json()
+
+
+
+
