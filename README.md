@@ -27,7 +27,7 @@ Make sure to "Enable OAuth" and OAuth Client ID and Client Secret.
 ## Authorize
 
 * Hit the "Set Location" button (create a location if the dropdown has no options)
-* Hit install
+* Select devices in “Preferences” and hit install
 * Copy the API Token and Endpoint
 
 
